@@ -1,0 +1,23 @@
+{
+  "name": "stuwax",
+  "productName": "Stuwax",
+  "version": "1.0.0",
+  "description": "Skiwachs-Berater nach Schnee und Wetter",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "33.2.0",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "app.stuwax.desktop",
+    "productName": "Stuwax",
+    "files": ["main.js", "index.html", "package.json"],
+    "win": { "target": "nsis" },
+    "mac": { "target": "dmg" },
+    "linux": { "target": "AppImage" }
+  }
+}
