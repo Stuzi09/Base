@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Stuwax: Skiwachs-Empfehlung nach Schnee- und Lufttemperatur, Schneeart und Feuchte.">
+<meta name="theme-color" content="#0B1E3F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Stuwax">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Stuwax</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --navy: #0B1E3F;
+    --navy-2: #13305C;
+    --navy-3: #1B3D74;
+    --white: #FFFFFF;
+    --muted: #B9C7DE;
+    --orange: #FF7A00;
+    --orange-2: #FF9A3D;
+    --radius: 16px;
+    --touch: 44px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 10% -10%, var(--navy-3) 0%, var(--navy) 55%) fixed, var(--navy);
+    color: var(--white);
+    min-height: 100vh;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
+
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0 16px;
+  }
+  .logo { font-size: 28px; font-weight: 800; letter-spacing: 0.5px; }
+  .logo span { color: var(--orange); }
+  .tagline { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+  .card {
+    background: var(--navy-2);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.25);
+    margin-bottom: 14px;
+  }
+  .card h2 { font-size: 18px; margin: 0 0 12px; }
+  .muted { color: var(--muted); font-size: 13px; }
+
+  .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (min-width: 640px) { .grid-form { grid-template-columns: 1fr 1fr 1fr; } }
+  label.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+  input[type=number], input[type=text], select {
+    background: var(--navy);
+    color: var(--white);
+    border: 1px solid var(--navy-3);
+    border-radius: 12px;
+    min-height: var(--touch);
+    padding: 8px 12px;
+    font-size: 16px;
+    width: 100%;
+  }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+  .err { color: var(--orange-2); font-size: 12px; min-height: 16px; }
+
+  .btn {
+    background: var(--orange); color: var(--navy); border: 0;
+    border-radius: 12px; min-height: var(--touch); padding: 10px 18px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn.ghost {
+    background: transparent; color: var(--white); border: 1px solid var(--navy-3); font-weight: 600;
+  }
+  .btn.small { min-height: 36px; padding: 6px 12px; font-size: 14px; }
+  .btn.danger { background: transparent; color: var(--orange-2); border: 1px solid var(--orange-2); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .pill {
+    display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 9px;
+    border-radius: 999px; background: var(--navy); color: var(--orange);
+    border: 1px solid var(--orange); white-space: nowrap;
+  }
+  .pill.hart { color: var(--white); border-color: var(--white); }
+  .pill.warn { color: var(--orange-2); border-color: var(--orange-2); }
+
+  .results { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  @media (min-width: 720px) { .results { grid-template-columns: 1fr 1fr; } }
+  .result-list { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 10px; }
+  .hit {
+    display: flex; gap: 12px; align-items: center;
+    background: var(--navy); border-radius: 14px; padding: 10px;
+  }
+  .hit.owned-off { opacity: 0.55; }
+  .thumb {
+    width: 56px; height: 56px; border-radius: 12px; flex: 0 0 56px;
+    background-size: cover; background-position: center;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: rgba(0,0,0,0.55); font-size: 15px;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.15);
+  }
+  .hit .info { flex: 1; min-width: 0; }
+  .hit .name { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hit .meta { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .hit .why { color: var(--white); font-size: 12px; margin-top: 4px; opacity: 0.9; }
+
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    background: rgba(11,30,63,0.96); backdrop-filter: blur(8px);
+    border-top: 1px solid var(--navy-3);
+    display: flex; justify-content: space-around;
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+  }
+  .tabbar button {
+    background: transparent; color: var(--muted); border: 0; font-size: 13px; font-weight: 600;
+    min-height: var(--touch); min-width: 96px; border-radius: 12px; cursor: pointer;
+  }
+  .tabbar button[aria-selected="true"] { color: var(--orange); background: var(--navy-2); }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; }
+  .filters select, .filters input[type=text] { width: auto; min-width: 150px; flex: 1 1 150px; }
+  .chip { min-height: 36px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--navy-3);
+    background: transparent; color: var(--white); font-weight: 600; cursor: pointer; font-size: 14px; }
+  .chip[aria-pressed="true"] { background: var(--orange); color: var(--navy); border-color: var(--orange); }
+
+  .wax-grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+  @media (min-width: 560px) { .wax-grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 900px) { .wax-grid { grid-template-columns: 1fr 1fr 1fr; } }
+  .wax {
+    background: var(--navy-2); border-radius: var(--radius); padding: 12px;
+    display: flex; gap: 12px; align-items: center;
+    border: 2px solid transparent; transition: border-color .15s;
+  }
+  .wax.on { border-color: var(--orange); }
+  .wax .body { flex: 1; min-width: 0; }
+  .wax .wname { font-weight: 700; font-size: 15px; }
+  .wax .wsub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .wax .wrange { font-size: 12px; margin-top: 4px; }
+  .wax .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .wax .thumb { width: 72px; height: 72px; flex-basis: 72px; }
+
+  .switch { position: relative; display: inline-block; width: 52px; height: 30px; flex: 0 0 52px; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .slider {
+    position: absolute; inset: 0; background: var(--navy-3); border-radius: 999px; cursor: pointer; transition: background .15s;
+  }
+  .slider::before {
+    content: ""; position: absolute; height: 24px; width: 24px; left: 3px; top: 3px;
+    background: var(--white); border-radius: 50%; transition: transform .15s;
+  }
+  .switch input:checked + .slider { background: var(--orange); }
+  .switch input:checked + .slider::before { transform: translateX(22px); }
+  .switch input:focus-visible + .slider { outline: 2px solid var(--white); outline-offset: 2px; }
+
+  .file-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--navy); border: 1px dashed var(--orange); color: var(--white);
+    border-radius: 10px; min-height: 36px; padding: 6px 10px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .file-btn input { display: none; }
+
+  .checks { display: flex; flex-wrap: wrap; gap: 8px; }
+  .checks label { display: inline-flex; align-items: center; gap: 6px; background: var(--navy);
+    border: 1px solid var(--navy-3); border-radius: 10px; padding: 8px 10px; min-height: var(--touch); font-size: 14px; cursor: pointer; }
+  .checks input { width: 18px; height: 18px; accent-color: var(--orange); }
+  .notice { background: var(--navy); border-left: 4px solid var(--orange); padding: 10px 12px; border-radius: 10px; font-size: 14px; margin-top: 10px; }
+  .empty { color: var(--muted); padding: 14px 4px; font-size: 14px; }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    background: var(--orange); color: var(--navy); font-weight: 700; padding: 10px 16px; border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 20; max-width: 90vw;
+  }
+  .toast.show { opacity: 1; }
+  .tinput { display: flex; gap: 6px; align-items: stretch; }
+  .tinput input { flex: 1 1 auto; min-width: 0; }
+  .sign { min-width: 52px; min-height: var(--touch); border-radius: 12px; border: 1px solid var(--orange);
+    background: transparent; color: var(--orange); font-weight: 800; font-size: 15px; cursor: pointer; }
+  .sign:active { background: var(--orange); color: var(--navy); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="logo">Stu<span>wax</span></div>
+      <div class="tagline">Skiwachs-Berater nach Schnee und Wetter</div>
+    </div>
+  </header>
+
+  <!-- ANSICHT: EMPFEHLUNG -->
+  <section class="view active" id="view-empfehlung" aria-label="Empfehlung">
+    <div class="card">
+      <h2>Bedingungen eingeben</h2>
+      <form id="form-empfehlung" novalidate>
+        <div class="grid-form">
+          <label class="field">Lufttemperatur (°C)
+            <span class="tinput"><input type="text" id="in-luft" inputmode="text" autocomplete="off" placeholder="z. B. -6"><button type="button" class="sign" data-sign="in-luft" aria-label="Vorzeichen wechseln">+/−</button></span>
+            <span class="err" id="err-luft"></span>
+          </label>
+          <label class="field">Schneetemperatur (°C)
+            <span class="tinput"><input type="text" id="in-schnee" inputmode="text" autocomplete="off" placeholder="z. B. -8"><button type="button" class="sign" data-sign="in-schnee" aria-label="Vorzeichen wechseln">+/−</button></span>
+            <span class="err" id="err-schnee"></span>
+          </label>
+          <label class="field">Luftfeuchtigkeit (%)
+            <input type="number" id="in-feuchte" step="1" min="0" max="100" placeholder="z. B. 70" inputmode="numeric">
+            <span class="err" id="err-feuchte"></span>
+          </label>
+          <label class="field">Niederschlag
+            <select id="in-niederschlag">
+              <option value="keiner">keiner</option>
+              <option value="regen">Regen</option>
+              <option value="schneeregen">Schneeregen</option>
+              <option value="schneefall">Schneefall</option>
+            </select>
+          </label>
+          <label class="field">Schnee ist
+            <select id="in-nass">
+              <option value="trocken">trocken</option>
+              <option value="nass">nass</option>
+            </select>
+          </label>
+          <label class="field">Schneeart
+            <select id="in-schneeart">
+              <option value="Neuschnee">Neuschnee</option>
+              <option value="Altschnee">Altschnee</option>
+              <option value="Kunstschnee">Kunstschnee</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn">Wachs finden</button>
+          <button type="button" class="btn ghost" id="btn-beispiel">Beispiel laden</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="ergebnis" aria-live="polite"></div>
+  </section>
+
+  <!-- ANSICHT: MEINE WACHSE -->
+  <section class="view" id="view-wachse" aria-label="Meine Wachse">
+    <div class="card">
+      <div class="section-head">
+        <h2>Wachse auswählen</h2>
+        <span class="muted" id="zaehler"></span>
+      </div>
+      <p class="muted" style="margin:0 0 12px">Schalter aktivieren, wenn ein Wachs in die Suche soll. Foto antippen, um dein eigenes Bild des Wachses hinzuzufügen.</p>
+      <div class="filters">
+        <button class="chip" data-typ="alle" aria-pressed="true">Alle</button>
+        <button class="chip" data-typ="fluessig" aria-pressed="false">Flüssig</button>
+        <button class="chip" data-typ="hart" aria-pressed="false">Hart</button>
+        <button class="chip" id="chip-nur-aktiv" aria-pressed="false">Nur aktive</button>
+      </div>
+      <div class="filters">
+        <select id="filter-marke" aria-label="Marke filtern"></select>
+        <input type="text" id="filter-suche" placeholder="Suchen (Name, Farbe)" aria-label="Suchen">
+      </div>
+      <div class="actions" style="margin:0 0 12px">
+        <button class="btn small ghost" id="btn-alle-an">Alle aktivieren</button>
+        <button class="btn small ghost" id="btn-alle-aus">Alle deaktivieren</button>
+      </div>
+      <div class="wax-grid" id="wax-liste"></div>
+    </div>
+
+    <div class="card">
+      <h2>Eigenes Wachs hinzufügen</h2>
+      <p class="muted" style="margin:0 0 12px">Für Marken oder Wachse, die noch nicht in der Liste sind. Temperaturbereiche aus der Verpackung oder dem Katalog eintragen.</p>
+      <form id="form-eigen" novalidate>
+        <div class="grid-form">
+          <label class="field">Name
+            <input type="text" id="eig-name" placeholder="z. B. Vola Blau">
+          </label>
+          <label class="field">Marke
+            <input type="text" id="eig-marke" placeholder="z. B. Vola">
+          </label>
+          <label class="field">Typ
+            <select id="eig-typ">
+              <option value="hart">Hart</option>
+              <option value="fluessig">Flüssig</option>
+            </select>
+          </label>
+          <label class="field">Schneetemp. min (°C)
+            <span class="tinput"><input type="text" id="eig-schnee-min" inputmode="text" autocomplete="off"><button type="button" class="sign" data-sign="eig-schnee-min" aria-label="Vorzeichen wechseln">+/−</button></span>
+          </label>
+          <label class="field">Schneetemp. max (°C)
+            <span class="tinput"><input type="text" id="eig-schnee-max" inputmode="text" autocomplete="off"><button type="button" class="sign" data-sign="eig-schnee-max" aria-label="Vorzeichen wechseln">+/−</button></span>
+          </label>
+          <label class="field">Farbe
+            <input type="color" id="eig-farbe" value="#FF7A00" style="min-height:44px;padding:4px">
+          </label>
+          <label class="field">Lufttemp. min (°C)
+            <span class="tinput"><input type="text" id="eig-luft-min" inputmode="text" autocomplete="off"><button type="button" class="sign" data-sign="eig-luft-min" aria-label="Vorzeichen wechseln">+/−</button></span>
+          </label>
+          <label class="field">Lufttemp. max (°C)
+            <span class="tinput"><input type="text" id="eig-luft-max" inputmode="text" autocomplete="off"><button type="button" class="sign" data-sign="eig-luft-max" aria-label="Vorzeichen wechseln">+/−</button></span>
+          </label>
+          <label class="field">Schnee
+            <select id="eig-nass">
+              <option value="beides">trocken und nass</option>
+              <option value="trocken">nur trocken</option>
+              <option value="nass">nur nass</option>
+            </select>
+          </label>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <span class="muted">Passende Schneearten</span>
+          <div class="checks" id="eig-arten">
+            <label><input type="checkbox" value="Neuschnee" checked> Neuschnee</label>
+            <label><input type="checkbox" value="Altschnee" checked> Altschnee</label>
+            <label><input type="checkbox" value="Kunstschnee" checked> Kunstschnee</label>
+          </div>
+        </div>
+        <p class="err" id="err-eigen"></p>
+        <div class="actions">
+          <button type="submit" class="btn">Wachs speichern</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ANSICHT: DATEN -->
+  <section class="view" id="view-daten" aria-label="Daten">
+    <div class="card">
+      <h2>Sichern und wiederherstellen</h2>
+      <p class="muted" style="margin:0 0 12px">Deine Auswahl, Fotos und eigenen Wachse liegen nur in diesem Browser. Kopiere regelmässig eine Sicherung und bewahre sie auf.</p>
+      <div class="actions" style="margin-top:0">
+        <button class="btn" id="btn-kopieren">Sicherung kopieren</button>
+        <label class="btn ghost file-btn" style="min-height:44px">Sicherung importieren
+          <input type="file" id="inp-import" accept="application/json,.json">
+        </label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Zurücksetzen</h2>
+      <p class="muted" style="margin:0 0 12px">Löscht Auswahl, Fotos und eigene Wachse in diesem Browser.</p>
+      <button class="btn danger" id="btn-reset">Alles löschen</button>
+    </div>
+    <div class="card">
+      <h2>Hinweis</h2>
+      <p class="muted" style="margin:0">Stuwax ist eine Orientierungshilfe. Die Temperaturbereiche stammen aus Herstellerangaben und können sich ändern. Bei Unsicherheit die Angaben auf der Verpackung prüfen.</p>
+    </div>
+  </section>
+</div>
+
+<nav class="tabbar" role="tablist" aria-label="Hauptnavigation">
+  <button role="tab" data-view="view-empfehlung" aria-selected="true">Empfehlung</button>
+  <button role="tab" data-view="view-wachse" aria-selected="false">Meine Wachse</button>
+  <button role="tab" data-view="view-daten" aria-selected="false">Daten</button>
+</nav>
+
+<div class="toast" id="toast" role="status"></div>
+<input type="file" id="inp-foto" accept="image/*" hidden>
+
+<script>
+/* ==========================================================
+   STUWAX – DATEN
+   schnee / luft: [min, max] in °C oder null (= nicht angegeben)
+   arten: passende Schneearten, nass: 'trocken' | 'nass' | 'beides'
+   zweck: 'Ski' (wird empfohlen) | 'Felle' | 'Belag' (nur Anzeige)
+   ========================================================== */
+const ALLE = ['Neuschnee', 'Altschnee', 'Kunstschnee'];
+const NEU_ALT = ['Neuschnee', 'Altschnee'];
+const ALT_KUNST = ['Altschnee', 'Kunstschnee'];
+const VOLA_KAT = 'Vola-Katalog 2025/26';
+
+function W(marke, name, typ, farbe, schnee, luft, o) {
+  return Object.assign({
+    id: (marke + '-' + name).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    marke, name, typ, farbe, schnee, luft,
+    arten: ALLE, nass: 'beides', zweck: 'Ski', quelle: '', hinweis: '', eigen: false
+  }, o || {});
+}
+
+const WACHSDATEN = [];
+const V = 'Vola';
+
+/* Vola: Einzelwachse aus dem Katalog (Luftangaben) */
+WACHSDATEN.push(
+  W(V, 'E-Wax', 'hart', '#D8C39A', null, [-10, 10], { quelle: VOLA_KAT + ', S. 19' }),
+  W(V, 'UNI Solid', 'hart', '#F28C28', null, [-8, 15], { quelle: VOLA_KAT + ', S. 21' }),
+  W(V, 'UNI-e Solid', 'hart', '#E9742A', null, [-12, 15], { quelle: VOLA_KAT + ', S. 21' }),
+  W(V, 'UNI Liquid', 'fluessig', '#F28C28', null, [-8, 15], { quelle: VOLA_KAT + ', S. 21' }),
+  W(V, 'UNI Spray', 'fluessig', '#F28C28', null, [-8, 15], { quelle: VOLA_KAT + ', S. 21' })
+);
+
+/* Vola: MX-E in 4 Farben */
+[
+  ['Blue', '#3A8FD9', [-25, -10]],
+  ['Purple', '#A34FA0', [-12, -4]],
+  ['Red', '#D7263D', [-5, 0]],
+  ['Yellow', '#F4C430', [-2, 10]]
+].forEach(function (f) {
+  WACHSDATEN.push(
+    W(V, 'MX-E ' + f[0], 'hart', f[1], null, f[2], { quelle: VOLA_KAT + ', S. 22-23' }),
+    W(V, 'MX-E ' + f[0] + ' Liquid', 'fluessig', f[1], null, f[2], { quelle: VOLA_KAT + ', S. 22-23' })
+  );
+});
+
+/* Vola: Schneearten je Wachs und Farbe laut Vola-Tabelle (New / Old & Transformed / Artificial).
+   Blau bei Neuschnee nur für LM und HM; HM Gelb nur für Altschnee; Moly nur für Kunstschnee. */
+var ARTEN_RACE = {
+  'LMrace':      { Blue: ['Neuschnee'], Violett: NEU_ALT, Red: NEU_ALT, Yellow: NEU_ALT },
+  'HMrace':      { Blue: ['Neuschnee'], Violett: NEU_ALT, Red: NEU_ALT, Yellow: ['Altschnee'] },
+  'LMrace Moly': { Blue: ['Kunstschnee'], Violett: ['Kunstschnee'], Red: ['Kunstschnee'], Yellow: ['Kunstschnee'] },
+  'HMrace Moly': { Blue: ['Kunstschnee'], Violett: ['Kunstschnee'], Red: ['Kunstschnee'], Yellow: ['Kunstschnee'] }
+};
+
+/* Vola: Race (LM, HM, Moly) in 4 Farben, Hart und Flüssig */
+[
+  ['Blue', '#2E86C1', [-25, -10]],
+  ['Violett', '#8E44AD', [-12, -4]],
+  ['Red', '#D7263D', [-5, 0]],
+  ['Yellow', '#F4C430', [-2, 10]]
+].forEach(function (f) {
+  [
+    ['LMrace', 'Für frischen, fallenden Schnee, wenig abrasiv'],
+    ['HMrace', 'Für abrasiven, frischen Schnee'],
+    ['LMrace Moly', 'Für künstlichen Schnee'],
+    ['HMrace Moly', 'Für künstlichen Schnee']
+  ].forEach(function (s) {
+    var arten = ARTEN_RACE[s[0]][f[0]];
+    WACHSDATEN.push(
+      W(V, s[0] + ' ' + f[0], 'hart', f[1], null, f[2], { arten: arten, nass: 'beides', quelle: VOLA_KAT + ', S. 30-39', hinweis: s[1] }),
+      W(V, s[0] + ' ' + f[0] + ' Liquid', 'fluessig', f[1], null, f[2], { arten: arten, nass: 'beides', quelle: VOLA_KAT + ', S. 30-39', hinweis: s[1] })
+    );
+  });
+});
+
+/* Vola: Propulsor (Schneetemperatur laut Katalog) und Top Finish M23 */
+WACHSDATEN.push(
+  W(V, 'Propulsor Blue', 'hart', '#2E86C1', [-12, -5], null, { arten: NEU_ALT, quelle: VOLA_KAT + ', S. 40' }),
+  W(V, 'Propulsor Yellow', 'hart', '#F4C430', [-5, 0], null, { arten: NEU_ALT, quelle: VOLA_KAT + ', S. 40' }),
+  W(V, 'Propulsor Blue Moly', 'hart', '#2E86C1', [-12, -5], null, { arten: ALT_KUNST, quelle: VOLA_KAT + ', S. 40' }),
+  W(V, 'Propulsor Yellow Moly', 'hart', '#F4C430', [-5, 0], null, { arten: ALT_KUNST, quelle: VOLA_KAT + ', S. 40' }),
+  W(V, 'M23 Blue', 'fluessig', '#2E86C1', null, [-25, -10], { quelle: VOLA_KAT + ', S. 41', hinweis: 'Temperatur aus Race-Farbe übernommen, bitte prüfen' }),
+  W(V, 'M23 Violett', 'fluessig', '#8E44AD', null, [-12, -4], { quelle: VOLA_KAT + ', S. 41', hinweis: 'Temperatur aus Race-Farbe übernommen, bitte prüfen' }),
+  W(V, 'M23 Red', 'fluessig', '#D7263D', null, [-5, 0], { quelle: VOLA_KAT + ', S. 41', hinweis: 'Temperatur aus Race-Farbe übernommen, bitte prüfen' }),
+  W(V, 'M23 Yellow', 'fluessig', '#F4C430', null, [-2, 10], { quelle: VOLA_KAT + ', S. 41', hinweis: 'Temperatur aus Race-Farbe übernommen, bitte prüfen' })
+);
+
+/* Vola: Touring und Bases (nur Anzeige, keine Empfehlung) */
+WACHSDATEN.push(
+  W(V, 'Touring Wax', 'hart', '#6AA84F', null, null, { zweck: 'Felle', quelle: VOLA_KAT + ', S. 24-25' }),
+  W(V, 'Touring Liquid', 'fluessig', '#6AA84F', null, null, { zweck: 'Felle', quelle: VOLA_KAT + ', S. 24-25' }),
+  W(V, 'Hard Base', 'hart', '#4A8F3C', null, null, { zweck: 'Belag', quelle: VOLA_KAT + ', S. 28-29' }),
+  W(V, 'Medium Base', 'hart', '#D9534F', null, null, { zweck: 'Belag', quelle: VOLA_KAT + ', S. 28-29' }),
+  W(V, 'Soft Base', 'hart', '#EEEEEE', null, null, { zweck: 'Belag', quelle: VOLA_KAT + ', S. 28-29' }),
+  W(V, 'VRB Base', 'hart', '#222222', null, null, { zweck: 'Belag', quelle: VOLA_KAT + ', S. 28-29' }),
+  W(V, 'Graphite Base', 'hart', '#333333', null, null, { zweck: 'Belag', quelle: VOLA_KAT + ', S. 28-29' }),
+  W(V, 'MX-901 Premium', 'hart', '#8E44AD', null, null, { zweck: 'Belag', quelle: VOLA_KAT + ', S. 28-29' })
+);
+
+/* Hilfsfunktion: Zeilen je Marke. Format: [name, 'h'|'f', farbe, schnee, luft, arten, nass, hinweis] */
+function R(marke, quelle, rows) {
+  rows.forEach(function (r) {
+    var o = { quelle: quelle, arten: r[5] || ALLE, nass: r[6] || 'beides', hinweis: r[7] || '' };
+    o.legacy = /Legacy/.test(o.hinweis);
+    WACHSDATEN.push(W(marke, r[0], r[1] === 'h' ? 'hart' : 'fluessig', r[2], r[3], r[4], o));
+  });
+}
+
+R('Toko', 'Toko-Angaben (toko.ch), Recherche', [
+  ['Performance Hot Wax Gelb', 'h', '#F4C430', [-6, 0], [-4, 10], null, 'nass', 'Luft: Händlerangabe'],
+  ['Performance Hot Wax Rot', 'h', '#D7263D', [-12, -4], [-11, -2], null, null, 'Luft: Händlerangabe'],
+  ['Performance Hot Wax Blau', 'h', '#2E86C1', [-30, -10], [-30, -9], ['Altschnee', 'Kunstschnee'], 'trocken', 'Luft: Händlerangabe'],
+  ['Performance Hot Wax Schwarz', 'h', '#222222', [-30, 0], null, ['Altschnee', 'Kunstschnee'], null, 'Verschmutzter Schnee'],
+  ['Base Performance Hot Wax Gelb', 'h', '#F4C430', [-6, 0], [-4, 10], null, 'nass', 'Luft: Händlerangabe'],
+  ['Base Performance Hot Wax Rot', 'h', '#D7263D', [-12, -4], [-11, -2], null, null, 'Luft: Händlerangabe'],
+  ['Base Performance Hot Wax Blau', 'h', '#2E86C1', [-30, -10], [-30, -9], ['Altschnee', 'Kunstschnee'], 'trocken', 'Luft: Händlerangabe'],
+  ['High Performance Hot Wax Warm', 'h', '#F4C430', [-4, 0], null],
+  ['High Performance Hot Wax Universal', 'h', '#D7263D', [-16, 0], null],
+  ['High Performance Hot Wax Kalt', 'h', '#2E86C1', [-24, -12], null],
+  ['Natural Speed Hot Wax Gelb', 'h', '#F4C430', [-4, 0], null],
+  ['Natural Speed Hot Wax Rot', 'h', '#D7263D', [-16, 0], null],
+  ['Natural Speed Hot Wax Blau', 'h', '#2E86C1', [-24, -12], null],
+  ['All-in-One Hot Wax Universal', 'h', '#9AA5B1', [-30, 0], null, null, null, 'Universal'],
+  ['Natural Wax', 'h', '#9AA5B1', [-30, 0], null, null, null, 'Universal'],
+  ['RS Premix 1916 Hot Wax', 'h', '#9AA5B1', [-30, 0], null, null, null, 'Universal, Schneeart nicht angegeben'],
+  ['X-Cold Powder', 'h', '#2E86C1', [-30, -15], null, ['Altschnee', 'Kunstschnee'], null, 'Pulver-Beimischung'],
+  ['High Performance Powder Gelb', 'h', '#F4C430', [-4, 0], null, null, null, 'Pulver'],
+  ['High Performance Powder Rot', 'h', '#D7263D', [-16, 0], null, null, null, 'Pulver'],
+  ['High Performance Powder Blau', 'h', '#2E86C1', [-24, -12], null, ['Altschnee', 'Kunstschnee'], 'trocken', 'Pulver'],
+  ['Jet Powder Top Finish warm', 'h', '#F4C430', [-4, 0], null, null, 'nass', 'Pulver, Finish'],
+  ['Jet Powder Top Finish mid', 'h', '#D7263D', [-12, -2], null, null, null, 'Pulver, Finish'],
+  ['Jet Powder Top Finish cold', 'h', '#2E86C1', [-20, -10], null, ['Altschnee', 'Kunstschnee'], null, 'Pulver, Finish'],
+  ['Jet Liquid Top Finish warm', 'f', '#F4C430', [-4, 0], null, null, 'nass', 'Finish'],
+  ['Jet Liquid Top Finish mid', 'f', '#D7263D', [-12, -2], null, null, null, 'Finish'],
+  ['Jet Liquid Top Finish cold', 'f', '#2E86C1', [-20, -10], null, null, null, 'Finish'],
+  ['Jet Bloc Top Finish warm', 'f', '#F4C430', [-4, 0], null, null, 'nass', 'Rub-On-Block, Finish'],
+  ['Jet Bloc Top Finish mid', 'f', '#D7263D', [-12, -2], null, null, null, 'Rub-On-Block, Finish'],
+  ['Jet Bloc Top Finish cold', 'f', '#2E86C1', [-20, -10], null, ['Altschnee', 'Kunstschnee'], 'trocken', 'Rub-On-Block, Finish'],
+  ['Base Performance Liquid Gelb', 'f', '#F4C430', [-6, 0], [-4, 10], null, 'nass', 'Luft: Händlerangabe'],
+  ['Base Performance Liquid Rot', 'f', '#D7263D', [-12, -4], [-11, -2]],
+  ['Base Performance Liquid Blau', 'f', '#2E86C1', [-30, -10], [-30, -9], ['Altschnee', 'Kunstschnee']],
+  ['Performance Liquid Gelb', 'f', '#F4C430', [-6, 0], null, null, 'nass'],
+  ['Performance Liquid Rot', 'f', '#D7263D', [-12, -4], null],
+  ['Performance Liquid Blau', 'f', '#2E86C1', [-30, -10], null],
+  ['High Performance Liquid Gelb', 'f', '#F4C430', [-6, 0], [-4, 10], null, 'nass', 'Luft: Händlerangabe'],
+  ['High Performance Liquid Rot', 'f', '#D7263D', [-12, -4], [-11, -2]],
+  ['High Performance Liquid Blau', 'f', '#2E86C1', [-30, -10], [-30, -9]],
+  ['Performance Paste Schwarz', 'f', '#222222', [-30, 0], null, ['Altschnee', 'Kunstschnee'], null, 'Paste'],
+  ['Express Pocket', 'f', '#9AA5B1', [-30, 0], null, null, null, 'Universal'],
+  ['Express Paste Wax', 'f', '#9AA5B1', [-30, 0], null, null, null, 'Universal'],
+  ['Express Rub-On', 'f', '#9AA5B1', [-30, 0], null, null, null, 'Universal'],
+  ['All-In-One Wipe und Brush', 'f', '#9AA5B1', [-30, 0], null, null, null, 'Universal'],
+  ['JetStream Bloc 2.0 Rot', 'f', '#D7263D', [-12, -2], null, null, null, 'Legacy, Auslauf']
+]);
+
+R('Swix', 'Swix-Angaben (swixsport.com, Händler), Recherche', [
+  ['HS5 Türkis', 'h', '#1BB5C5', [-18, -10]],
+  ['HS6 Blau', 'h', '#2E86C1', [-12, -6]],
+  ['HS7 Violett', 'h', '#8E44AD', [-8, -2]],
+  ['HS8 Rot', 'h', '#D7263D', [-4, 4]],
+  ['HS10 Gelb', 'h', '#F4C430', [0, 10]],
+  ['TS5 Black', 'h', '#1BB5C5', [-18, -10], null, ['Altschnee']],
+  ['TS6 Black', 'h', '#2E86C1', [-12, -6], null, ['Altschnee']],
+  ['TS7 Black', 'h', '#8E44AD', [-8, -2], null, ['Altschnee']],
+  ['TS10 Black', 'h', '#F4C430', [0, 10], null, ['Altschnee']],
+  ['TS5 Turbo', 'h', '#1BB5C5', [-15, -8], null, null, null, 'Pulver, Finish'],
+  ['TS6 Turbo', 'h', '#2E86C1', [-12, -4], null, null, null, 'Pulver, Finish'],
+  ['TS7 Turbo', 'h', '#8E44AD', [-7, -2], null, null, null, 'Pulver, Finish'],
+  ['TS8 Turbo', 'h', '#D7263D', [-4, 4], null, null, null, 'Pulver, Finish'],
+  ['TS Powder', 'h', '#9AA5B1', null, null, ['Neuschnee'], null, 'Keine Temperaturangabe'],
+  ['CH4X Grün (Legacy)', 'h', '#3BA55D', [-32, -12], null, null, null, 'Legacy'],
+  ['CH5X Türkis (Legacy)', 'h', '#1BB5C5', [-14, -8], null, null, null, 'Legacy'],
+  ['CH6X Blau (Legacy)', 'h', '#2E86C1', [-10, -5], null, ['Altschnee', 'Kunstschnee'], 'trocken', 'Legacy'],
+  ['CH7X Violett (Legacy)', 'h', '#8E44AD', [-8, -2], null, null, null, 'Legacy'],
+  ['CH8X Rot (Legacy)', 'h', '#D7263D', [-4, 4], null, null, null, 'Legacy'],
+  ['CH10X Gelb (Legacy)', 'h', '#F4C430', [0, 10], null, null, null, 'Legacy'],
+  ['HS6 Liquid', 'f', '#2E86C1', [-12, -4], null, null, 'nass', 'Hohe Luftfeuchte'],
+  ['HS7 Liquid', 'f', '#8E44AD', [-8, -2]],
+  ['HS8 Liquid', 'f', '#D7263D', [-4, 4]],
+  ['HS10 Liquid', 'f', '#F4C430', [2, 10], null, null, 'nass', 'Konflikt: Händler teils 0 bis +10, hier +2 bis +10'],
+  ['TS6 Liquid', 'f', '#2E86C1', [-12, -4]],
+  ['TS7 Liquid', 'f', '#8E44AD', [-7, -2]],
+  ['TS10 Liquid', 'f', '#F4C430', [2, 10]],
+  ['F4 Liquid 100 ml', 'f', '#9AA5B1', [-30, 10], null, null, null, 'Universal'],
+  ['F4 Paste 75 ml', 'f', '#9AA5B1', [-30, 10], null, null, null, 'Universal'],
+  ['F4 Aerosol 150 ml', 'f', '#9AA5B1', [-30, 10], null, null, null, 'Universal'],
+  ['F4 Glidewax 180 g', 'h', '#9AA5B1', [-30, 10], null, null, null, 'Universal']
+]);
+
+R('FZero', 'FZero-Angabe (Händler), keine Temperaturangabe', [
+  ['Competition Paste', 'f', '#9AA5B1', null, null, null, null, 'Renn-Paste, nur Anzeige, keine Empfehlung']
+]);
+
+R('Holmenkol', 'Holmenkol-Angaben (holmenkol.com), Recherche', [
+  ['Alphamix Gelb', 'h', '#F4C430', [-4, 0], null, ['Neuschnee']],
+  ['Betamix Rot', 'h', '#D7263D', [-14, -4]],
+  ['Ultramix Blau', 'h', '#2E86C1', [-20, -8], [-20, -7], ['Altschnee', 'Kunstschnee'], 'trocken'],
+  ['Performance Bar Violett', 'h', '#8E44AD', [-12, 0]],
+  ['Performance Bar 21', 'h', '#9AA5B1', [-20, 0], null, null, null, 'Händlerangabe'],
+  ['Racing Bar Gelb', 'h', '#F4C430', [-4, 0], null, null, 'nass'],
+  ['Racing Bar Rot', 'h', '#D7263D', [-10, -4]],
+  ['Racing Bar Blau', 'h', '#2E86C1', [-15, -8], null, ['Altschnee', 'Kunstschnee']],
+  ['Racing Bar Violett', 'h', '#8E44AD', [-12, 0], null, null, null, 'Händlerangabe'],
+  ['Natural Skiwax Bar', 'h', '#9AA5B1', [-30, 10], null, null, null, 'Universal'],
+  ['Alphamix Gelb Liquid', 'f', '#F4C430', [-4, 0], null, ['Neuschnee']],
+  ['Betamix Rot Liquid', 'f', '#D7263D', [-14, -4]],
+  ['Ultramix Blau Liquid', 'f', '#2E86C1', [-20, -8], [-20, -7], ['Altschnee', 'Kunstschnee'], 'trocken'],
+  ['Natural Wax Fluid', 'f', '#9AA5B1', [-20, 0], null, null, null, 'Universal, Händlerangabe'],
+  ['Natural Skiwax Spray', 'f', '#9AA5B1', [-20, 0], null, null, null, 'Universal, Händlerangabe']
+]);
+
+R('Wachsmeister', 'WaXmeister-Shop (waxmeister.com), Recherche', [
+  ['MAX HOT (PLUS)', 'h', '#D7263D', [-4, 2], null, null, 'nass', 'Frühlingsschnee, nasse Kristalle'],
+  ['MAX MED (PLUS)', 'h', '#F28C28', [-11, -2], null, ['Neuschnee', 'Kunstschnee']],
+  ['MAX ULTRA (PLUS)', 'h', '#8E44AD', [-14, -2], null, ['Kunstschnee', 'Altschnee']],
+  ['MAX COOL', 'h', '#2E86C1', [-25, -9], null, ['Kunstschnee', 'Neuschnee'], 'trocken'],
+  ['BASIC', 'h', '#9AA5B1', [-20, 0], null, null, null, 'Universal'],
+  ['SPEEDBasic HOT', 'h', '#D7263D', [-6, 3], null, null, null, 'Schneeart nicht angegeben'],
+  ['SPEEDBasic COLD', 'h', '#2E86C1', [-16, -3], null, null, null, 'Konflikt: Shop-Text -14 bis -2, hier -16 bis -3'],
+  ['OverSPEED MED', 'h', '#F28C28', [-11, -2], null, null, null, 'Finish'],
+  ['OverSPEED COOL', 'h', '#2E86C1', [-25, -9], null, null, null, 'Finish'],
+  ['MAX RACEPaste HOT', 'f', '#D7263D', [-4, 2], null, null, 'nass', 'Paste'],
+  ['MAX RACEPaste MED', 'f', '#F28C28', [-11, -2], null, null, null, 'Paste']
+]);
+
+/* ==========================================================
+   STUWAX – LOGIK (reine Funktionen, ohne DOM)
+   ========================================================== */
+const SPEICHER_KEY = 'stuwax.v1';
+
+function mitte(r) { return (r[0] + r[1]) / 2; }
+function bereichText(r) { return r ? (r[0] + ' bis ' + r[1] + ' °C') : null; }
+
+/* Bewertet ein Wachs für die Eingaben e. Gibt null zurück, wenn es nicht passt. */
+function bewerte(w, e) {
+  if (w.zweck !== 'Ski') return null;
+  if (w.arten.indexOf(e.schneeart) < 0) return null;
+
+  var score = 0;
+  var grund = [];
+  var geprueft = false;
+
+  if (w.schnee) {
+    if (e.schnee < w.schnee[0] || e.schnee > w.schnee[1]) return null;
+    score = Math.abs(e.schnee - mitte(w.schnee));
+    grund.push('Schnee ' + e.schnee + ' °C passt');
+    geprueft = true;
+  }
+  if (w.luft && e.luft !== null) {
+    if (e.luft < w.luft[0] || e.luft > w.luft[1]) return null;
+    if (!w.schnee) score = Math.abs(e.luft - mitte(w.luft));
+    grund.push('Luft ' + e.luft + ' °C passt');
+    geprueft = true;
+  }
+  if (!geprueft) return null;
+
+  if (w.nass !== 'beides' && w.nass !== e.nass) score += 2;
+  if (e.feuchte !== null) {
+    if (e.feuchte >= 85 && w.nass === 'trocken') score += 1;
+    if (e.feuchte <= 50 && w.nass === 'nass') score += 1;
+  }
+  if (w.hinweis && w.hinweis.indexOf('Universal') >= 0) score += 1;
+
+  return { wachs: w, score: score, grund: grund.join(' · ') };
+}
+
+/* Empfehlung je Typ: die besten drei aktiven Wachse. */
+function empfehle(e, wachse, aktivFn) {
+  var ergebnis = { fluessig: [], hart: [], unbewertet: [] };
+  wachse.forEach(function (w) {
+    if (!aktivFn(w) || w.zweck !== 'Ski') return;
+    var treffer = bewerte(w, e);
+    if (treffer) {
+      ergebnis[w.typ].push(treffer);
+    } else if (!w.schnee && !w.luft && !w.hinweis.match(/Universal/)) {
+      ergebnis.unbewertet.push(w);
+    }
+  });
+  ergebnis.fluessig.sort(function (a, b) { return a.score - b.score; });
+  ergebnis.hart.sort(function (a, b) { return a.score - b.score; });
+  ergebnis.fluessig = ergebnis.fluessig.slice(0, 3);
+  ergebnis.hart = ergebnis.hart.slice(0, 3);
+  return ergebnis;
+}
+
+/* ==========================================================
+   STUWAX – ZUSTAND (localStorage)
+   ========================================================== */
+var zustand = { aktiv: {}, fotos: {}, eigene: [], letzte: null };
+
+function laden() {
+  try {
+    var roh = localStorage.getItem(SPEICHER_KEY);
+    if (roh) {
+      var d = JSON.parse(roh);
+      zustand.aktiv = d.aktiv || {};
+      zustand.fotos = d.fotos || {};
+      zustand.eigene = d.eigene || [];
+      zustand.letzte = d.letzte || null;
+    }
+  } catch (err) { /* defekte Daten ignorieren */ }
+}
+
+function speichern() {
+  try {
+    localStorage.setItem(SPEICHER_KEY, JSON.stringify(zustand));
+    return true;
+  } catch (err) {
+    toast('Speicher ist voll. Foto kleiner wählen oder Fotos entfernen.');
+    return false;
+  }
+}
+
+function alleWachse() { return WACHSDATEN.concat(zustand.eigene); }
+function istAktiv(w) {
+  if (zustand.aktiv[w.id] !== undefined) return zustand.aktiv[w.id];
+  return !w.legacy && w.marke === 'Vola';
+}
+
+/* ==========================================================
+   STUWAX – HILFSFUNKTIONEN UI
+   ========================================================== */
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+var toastTimer = null;
+function toast(text) {
+  var t = $('toast');
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2600);
+}
+function kuerzel(name) {
+  var teile = name.replace(/[^A-Za-zÄÖÜäöü0-9 ]/g, ' ').trim().split(/\s+/);
+  return ((teile[0] || '?').charAt(0) + (teile[1] || teile[0] || '').charAt(0)).toUpperCase();
+}
+function thumbHtml(w) {
+  var foto = zustand.fotos[w.id];
+  var cls = 'thumb';
+  if (foto) {
+    return '<div class="' + cls + '" style="background-image:url(\'' + foto + '\')" aria-hidden="true"></div>';
+  }
+  return '<div class="' + cls + '" style="background:' + esc(w.farbe) + '" aria-hidden="true">' + esc(kuerzel(w.name)) + '</div>';
+}
+
+/* ==========================================================
+   STUWAX – ANZEIGE: EMPFEHLUNG
+   ========================================================== */
+function metaText(w) {
+  var teile = [];
+  if (w.schnee) teile.push('Schnee ' + bereichText(w.schnee));
+  if (w.luft) teile.push('Luft ' + bereichText(w.luft));
+  return teile.join(' · ') || 'Keine Temperaturangabe';
+}
+
+function renderErgebnis(e) {
+  var res = empfehle(e, alleWachse(), istAktiv);
+  var html = (e.niederschlag && e.niederschlag !== 'keiner')
+    ? '<div class="notice">Niederschlag: ' + esc(e.niederschlag) + (e.nass === 'nass' ? '. Nasse Wachse sind bevorzugt.' : '.') + '</div>'
+    : '';
+  html += '<div class="results">';
+  [['hart', 'Hartwachs'], ['fluessig', 'Flüssigwachs']].forEach(function (typ) {
+    var liste = res[typ[0]];
+    html += '<div class="card"><div class="section-head"><h2>' + typ[1] + '</h2>' +
+      '<span class="pill ' + (typ[0] === 'hart' ? 'hart' : '') + '">' + (typ[0] === 'hart' ? 'Hart' : 'Flüssig') + '</span></div>';
+    if (!liste.length) {
+      html += '<p class="empty">Kein aktives ' + typ[1] + ' passt zu diesen Werten. Unter „Meine Wachse“ weitere Wachse aktivieren.</p>';
+    } else {
+      html += '<ul class="result-list">';
+      liste.forEach(function (t, i) {
+        var w = t.wachs;
+        html += '<li class="hit">' + thumbHtml(w) +
+          '<div class="info"><div class="name">' + esc(w.name) + (i === 0 ? ' <span class="pill">Beste Wahl</span>' : '') + '</div>' +
+          '<div class="meta">' + esc(w.marke) + ' · ' + esc(metaText(w)) + '</div>' +
+          '<div class="why">' + esc(t.grund) + (w.hinweis ? ' · ' + esc(w.hinweis) : '') + '</div></div></li>';
+      });
+      html += '</ul>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  if (res.unbewertet.length) {
+    var namen = res.unbewertet.slice(0, 6).map(function (w) { return w.name; }).join(', ');
+    html += '<div class="notice">Ohne Temperaturangabe, daher nicht bewertet: ' + esc(namen) +
+      (res.unbewertet.length > 6 ? ' und weitere' : '') + '. Bereiche unter „Meine Wachse“ ergänzen.</div>';
+  }
+  $('ergebnis').innerHTML = html;
+}
+
+function effektivNass(nass, niederschlag) {
+  return (nass === 'nass' || niederschlag === 'regen' || niederschlag === 'schneeregen') ? 'nass' : 'trocken';
+}
+
+function vorzeichen(id) {
+  var el = $(id);
+  var v = el.value.trim().replace('−', '-');
+  if (v === '') { el.value = '-'; }
+  else if (v.charAt(0) === '-') { el.value = v.slice(1); }
+  else { el.value = '-' + v; }
+  el.focus();
+}
+
+function leseEingaben() {
+  var ok = true;
+  function zahl(id, errId, min, max, optional) {
+    var roh = $(id).value.trim().replace('−', '-');
+    $(errId).textContent = '';
+    if (roh === '') {
+      if (optional) return null;
+      $(errId).textContent = 'Bitte eingeben.';
+      ok = false; return null;
+    }
+    var n = Number(roh.replace(',', '.'));
+    if (isNaN(n) || n < min || n > max) {
+      $(errId).textContent = 'Bitte einen Wert zwischen ' + min + ' und ' + max + ' eingeben.';
+      ok = false; return null;
+    }
+    return n;
+  }
+  var e = {
+    schnee: zahl('in-schnee', 'err-schnee', -30, 5, false),
+    luft: zahl('in-luft', 'err-luft', -30, 15, true),
+    feuchte: zahl('in-feuchte', 'err-feuchte', 0, 100, true),
+    nass: effektivNass($('in-nass').value, $('in-niederschlag').value),
+    niederschlag: $('in-niederschlag').value,
+    schneeart: $('in-schneeart').value
+  };
+  return ok ? e : null;
+}
+
+function fuelleEingaben(d) {
+  if (!d) return;
+  $('in-luft').value = d.luft === null || d.luft === undefined ? '' : d.luft;
+  $('in-schnee').value = d.schnee === null || d.schnee === undefined ? '' : d.schnee;
+  $('in-feuchte').value = d.feuchte === null || d.feuchte === undefined ? '' : d.feuchte;
+  $('in-nass').value = d.nass || 'trocken';
+  $('in-niederschlag').value = d.niederschlag || 'keiner';
+  $('in-schneeart').value = d.schneeart || 'Neuschnee';
+}
+
+/* ==========================================================
+   STUWAX – ANZEIGE: MEINE WACHSE
+   ========================================================== */
+var filter = { typ: 'alle', nurAktiv: false, marke: '', suche: '' };
+var fotoZiel = null;
+
+function renderWachse() {
+  var alle = alleWachse();
+  var sichtbar = alle.filter(function (w) {
+    if (filter.typ !== 'alle' && w.typ !== filter.typ) return false;
+    if (filter.nurAktiv && !istAktiv(w)) return false;
+    if (filter.marke && w.marke !== filter.marke) return false;
+    if (filter.suche) {
+      var s = filter.suche.toLowerCase();
+      if ((w.name + ' ' + w.marke + ' ' + w.farbe).toLowerCase().indexOf(s) < 0) return false;
+    }
+    return true;
+  }).sort(function (a, b) { return (a.marke + a.name).localeCompare(b.marke + b.name, 'de'); });
+
+  var aktivAnzahl = alle.filter(istAktiv).length;
+  $('zaehler').textContent = aktivAnzahl + ' von ' + alle.length + ' aktiv';
+
+  if (!sichtbar.length) {
+    $('wax-liste').innerHTML = '<p class="empty">Keine Wachse für diesen Filter.</p>';
+    return;
+  }
+
+  $('wax-liste').innerHTML = sichtbar.map(function (w) {
+    var an = istAktiv(w);
+    var typLabel = w.typ === 'hart' ? 'Hart' : 'Flüssig';
+    var zweck = w.zweck !== 'Ski' ? ' · nur für ' + w.zweck : '';
+    return '<div class="wax' + (an ? ' on' : '') + '">' +
+      thumbHtml(w) +
+      '<div class="body">' +
+        '<div class="wname">' + esc(w.name) + '</div>' +
+        '<div class="wsub">' + esc(w.marke) + ' · ' + typLabel + esc(zweck) + '</div>' +
+        '<div class="wrange muted">' + esc(metaText(w)) + '</div>' +
+        '<div class="row">' +
+          '<button class="btn small ghost" data-act="foto" data-id="' + esc(w.id) + '">Foto</button>' +
+          (zustand.fotos[w.id] ? '<button class="btn small danger" data-act="foto-weg" data-id="' + esc(w.id) + '">Foto weg</button>' : '') +
+          (w.eigen ? '<button class="btn small danger" data-act="loeschen" data-id="' + esc(w.id) + '">Löschen</button>' : '') +
+        '</div>' +
+      '</div>' +
+      '<label class="switch" title="In die Suche aufnehmen">' +
+        '<input type="checkbox" data-act="toggle" data-id="' + esc(w.id) + '"' + (an ? ' checked' : '') + ' aria-label="' + esc(w.name) + ' aktiv">' +
+        '<span class="slider"></span>' +
+      '</label>' +
+    '</div>';
+  }).join('');
+}
+
+function fuelleMarkenFilter() {
+  var marken = {};
+  alleWachse().forEach(function (w) { marken[w.marke] = true; });
+  var liste = Object.keys(marken).sort(function (a, b) { return a.localeCompare(b, 'de'); });
+  $('filter-marke').innerHTML = '<option value="">Alle Marken</option>' +
+    liste.map(function (m) { return '<option value="' + esc(m) + '"' + (filter.marke === m ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('');
+}
+
+function verkleinern(datei) {
+  return new Promise(function (resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var max = 360;
+        var s = Math.min(1, max / Math.max(img.width, img.height));
+        var c = document.createElement('canvas');
+        c.width = Math.round(img.width * s);
+        c.height = Math.round(img.height * s);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(datei);
+  });
+}
+
+/* ==========================================================
+   STUWAX – EREIGNISSE
+   ========================================================== */
+function zeigeAnsicht(id) {
+  document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('active', v.id === id); });
+  document.querySelectorAll('.tabbar button').forEach(function (b) {
+    b.setAttribute('aria-selected', b.getAttribute('data-view') === id ? 'true' : 'false');
+  });
+  window.scrollTo(0, 0);
+}
+
+function sichtbareWachse() {
+  return alleWachse().filter(function (w) {
+    if (filter.typ !== 'alle' && w.typ !== filter.typ) return false;
+    if (filter.nurAktiv && !istAktiv(w)) return false;
+    if (filter.marke && w.marke !== filter.marke) return false;
+    return true;
+  });
+}
+
+function setzeAktiv(w, wert) { zustand.aktiv[w.id] = wert; }
+
+function eigenesSpeichern(ev) {
+  ev.preventDefault();
+  var fehler = $('err-eigen');
+  fehler.textContent = '';
+  var name = $('eig-name').value.trim();
+  if (!name) { fehler.textContent = 'Bitte einen Namen eingeben.'; return; }
+
+  function bereich(minId, maxId, label) {
+    var a = $(minId).value.trim(), b = $(maxId).value.trim();
+    if (a === '' && b === '') return null;
+    if (a === '' || b === '') { fehler.textContent = label + ': beide Werte ausfüllen.'; throw 'x'; }
+    var min = Number(a.replace('−', '-').replace(',', '.')), max = Number(b.replace('−', '-').replace(',', '.'));
+    if (isNaN(min) || isNaN(max)) { fehler.textContent = label + ': bitte Zahlen eingeben.'; throw 'x'; }
+    if (min > max) { fehler.textContent = label + ': Min muss kleiner als Max sein.'; throw 'x'; }
+    return [min, max];
+  }
+  var schnee, luft;
+  try {
+    schnee = bereich('eig-schnee-min', 'eig-schnee-max', 'Schneetemperatur');
+    luft = bereich('eig-luft-min', 'eig-luft-max', 'Lufttemperatur');
+  } catch (err) { return; }
+  if (!schnee && !luft) { fehler.textContent = 'Mindestens eine Temperatur eintragen.'; return; }
+
+  var arten = Array.prototype.slice.call(document.querySelectorAll('#eig-arten input:checked')).map(function (c) { return c.value; });
+  if (!arten.length) { fehler.textContent = 'Mindestens eine Schneeart wählen.'; return; }
+
+  var w = W($('eig-marke').value.trim() || 'Eigen', name, $('eig-typ').value, $('eig-farbe').value, schnee, luft, {
+    arten: arten, nass: $('eig-nass').value, eigen: true, quelle: 'Eigene Eingabe'
+  });
+  w.id = 'eigen-' + Date.now();
+  zustand.eigene.push(w);
+  zustand.aktiv[w.id] = true;
+  if (speichern()) {
+    $('form-eigen').reset();
+    fuelleMarkenFilter();
+    renderWachse();
+    toast('Wachs gespeichert');
+  }
+}
+
+function loeschenEigen(id) {
+  zustand.eigene = zustand.eigene.filter(function (w) { return w.id !== id; });
+  delete zustand.fotos[id];
+  delete zustand.aktiv[id];
+  speichern();
+  fuelleMarkenFilter();
+  renderWachse();
+}
+
+async function exportieren() {
+  var text = JSON.stringify(zustand);
+  try {
+    var dl = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null;
+    if (dl) {
+      await dl.save({ filename: 'stuwax-sicherung.json', data: text });
+      toast('Sicherung gespeichert');
+      return;
+    }
+  } catch (err) { toast('Speichern abgebrochen'); return; }
+  try {
+    var blob = new Blob([text], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'stuwax-sicherung.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  } catch (err) { toast('Download nicht möglich. Bitte Kopieren nutzen.'); }
+}
+
+function importieren(datei) {
+  var reader = new FileReader();
+  reader.onload = function () {
+    try {
+      var d = JSON.parse(reader.result);
+      zustand.aktiv = d.aktiv || {};
+      zustand.fotos = d.fotos || {};
+      zustand.eigene = d.eigene || [];
+      zustand.letzte = d.letzte || null;
+      if (speichern()) { renderAlles(); toast('Sicherung geladen'); }
+    } catch (err) {
+      toast('Datei konnte nicht gelesen werden.');
+    }
+  };
+  reader.readAsText(datei);
+}
+
+function alleZuruecksetzen() {
+  zustand = { aktiv: {}, fotos: {}, eigene: [], letzte: null };
+  speichern();
+  filter = { typ: 'alle', nurAktiv: false, marke: '', suche: '' };
+  renderAlles();
+  toast('Alles gelöscht');
+}
+
+function renderAlles() {
+  fuelleMarkenFilter();
+  renderWachse();
+  if (zustand.letzte) {
+    fuelleEingaben(zustand.letzte);
+    var e = leseEingabenRoh(zustand.letzte);
+    if (e) renderErgebnis(e);
+  }
+}
+
+function leseEingabenRoh(d) {
+  if (d.schnee === null || d.schnee === undefined) return null;
+  return {
+    schnee: Number(d.schnee),
+    luft: d.luft === null || d.luft === undefined ? null : Number(d.luft),
+    feuchte: d.feuchte === null || d.feuchte === undefined ? null : Number(d.feuchte),
+    nass: d.nass || 'trocken',
+    niederschlag: d.niederschlag || 'keiner',
+    schneeart: d.schneeart || 'Neuschnee'
+  };
+}
+
+function zweistufig(btn, text) {
+  var alt = btn.textContent;
+  btn.dataset.sicher = '1';
+  btn.textContent = text;
+  setTimeout(function () { btn.dataset.sicher = ''; btn.textContent = alt; }, 3000);
+}
+
+function kopieren() {
+  var text = JSON.stringify(zustand);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(
+      function () { toast('Sicherung kopiert'); },
+      function () { toast('Kopieren nicht möglich. Bitte Download nutzen.'); });
+  } else {
+    toast('Kopieren nicht möglich. Bitte Download nutzen.');
+  }
+}
+
+function init() {
+  laden();
+
+  document.querySelectorAll('.tabbar button').forEach(function (b) {
+    b.addEventListener('click', function () { zeigeAnsicht(b.getAttribute('data-view')); });
+  });
+
+  $('form-empfehlung').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var e = leseEingaben();
+    if (!e) return;
+    zustand.letzte = { schnee: e.schnee, luft: e.luft, feuchte: e.feuchte, nass: e.nass, niederschlag: e.niederschlag, schneeart: e.schneeart };
+    speichern();
+    renderErgebnis(e);
+    $('ergebnis').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  $('btn-beispiel').addEventListener('click', function () {
+    fuelleEingaben({ schnee: -3, luft: -2, feuchte: 80, nass: 'nass', schneeart: 'Neuschnee' });
+    toast('Beispielwerte geladen');
+  });
+
+  document.querySelectorAll('.chip[data-typ]').forEach(function (c) {
+    c.addEventListener('click', function () {
+      filter.typ = c.getAttribute('data-typ');
+      document.querySelectorAll('.chip[data-typ]').forEach(function (x) {
+        x.setAttribute('aria-pressed', x === c ? 'true' : 'false');
+      });
+      renderWachse();
+    });
+  });
+  $('chip-nur-aktiv').addEventListener('click', function () {
+    filter.nurAktiv = !filter.nurAktiv;
+    $('chip-nur-aktiv').setAttribute('aria-pressed', filter.nurAktiv ? 'true' : 'false');
+    renderWachse();
+  });
+  $('filter-marke').addEventListener('change', function (ev) { filter.marke = ev.target.value; renderWachse(); });
+  $('filter-suche').addEventListener('input', function (ev) { filter.suche = ev.target.value.trim(); renderWachse(); });
+
+  $('btn-alle-an').addEventListener('click', function () {
+    sichtbareWachse().forEach(function (w) { setzeAktiv(w, true); });
+    speichern(); renderWachse();
+  });
+  $('btn-alle-aus').addEventListener('click', function () {
+    sichtbareWachse().forEach(function (w) { setzeAktiv(w, false); });
+    speichern(); renderWachse();
+  });
+
+  $('wax-liste').addEventListener('click', function (ev) {
+    var btn = ev.target.closest('[data-act]');
+    if (!btn || btn.tagName !== 'BUTTON') return;
+    var id = btn.getAttribute('data-id');
+    var act = btn.getAttribute('data-act');
+    if (act === 'foto') { fotoZiel = id; $('inp-foto').value = ''; $('inp-foto').click(); }
+    if (act === 'foto-weg') { delete zustand.fotos[id]; speichern(); renderWachse(); renderErgebnisWennVorhanden(); }
+    if (act === 'loeschen') { if (btn.dataset.sicher) { loeschenEigen(id); } else { zweistufig(btn, 'Sicher löschen?'); } }
+  });
+  $('wax-liste').addEventListener('change', function (ev) {
+    var box = ev.target;
+    if (box.getAttribute('data-act') !== 'toggle') return;
+    zustand.aktiv[box.getAttribute('data-id')] = box.checked;
+    speichern();
+    renderWachse();
+  });
+
+  $('inp-foto').addEventListener('change', function (ev) {
+    var datei = ev.target.files[0];
+    if (!datei || !fotoZiel) return;
+    var ziel = fotoZiel;
+    verkleinern(datei).then(function (url) {
+      zustand.fotos[ziel] = url;
+      if (speichern()) { renderWachse(); renderErgebnisWennVorhanden(); toast('Foto gespeichert'); }
+    }).catch(function () { toast('Foto konnte nicht geladen werden.'); });
+    fotoZiel = null;
+  });
+
+  $('form-eigen').addEventListener('submit', eigenesSpeichern);
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('.sign') : null;
+    if (b) vorzeichen(b.getAttribute('data-sign'));
+  });
+  $('btn-kopieren').addEventListener('click', kopieren);
+  $('inp-import').addEventListener('change', function (ev) {
+    if (ev.target.files[0]) importieren(ev.target.files[0]);
+  });
+  $('btn-reset').addEventListener('click', function (ev) {
+    var b = ev.currentTarget;
+    if (b.dataset.sicher) { b.dataset.sicher = ''; b.textContent = 'Alles löschen'; alleZuruecksetzen(); }
+    else { zweistufig(b, 'Sicher? Nochmal tippen'); }
+  });
+
+  renderAlles();
+}
+
+function renderErgebnisWennVorhanden() {
+  if (!zustand.letzte) return;
+  var e = leseEingabenRoh(zustand.letzte);
+  if (e) renderErgebnis(e);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+<script>
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () { /* ohne Offline-Betrieb weiter nutzbar */ });
+  });
+}
+</script>
+</body>
+</html>
